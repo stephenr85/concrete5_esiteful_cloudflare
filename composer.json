@@ -1,0 +1,6 @@
+{
+    "type": "concrete5-package",
+    "require": {
+        "cloudflare/sdk": "^1.1"
+    }
+}
