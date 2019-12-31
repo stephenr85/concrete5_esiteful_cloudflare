@@ -48,7 +48,7 @@ class CloudflareHelper extends Helper {
         $cache = $this->app->make('cache/expensive');
         $cachedZone = $cache->getItem('esiteful_cloudflare/current_zone');
         if($cachedZone->isMiss()) {
-            $zone = $this->getApiEndpoint('zones')->getZoneID('cfisd.net');
+            $zone = $this->getApiEndpoint('zones')->getZoneID($this->getConfig()->get('esiteful_cloudflare.api.defaultZone'));
             $cachedZone->set($zone);
             $cache->save($cachedZone);
         } else {
