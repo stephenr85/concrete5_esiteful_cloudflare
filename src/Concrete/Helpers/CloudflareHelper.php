@@ -63,8 +63,10 @@ class CloudflareHelper extends Helper {
         return $q;
     }
 
-    public function addUrlsToCachePurgeQueue($urls)
+    public function queueCachePurgeURL($urls)
     {
+        if(!is_array($urls)) $urls = [$urls];
+
         $urls = array_map(function($url){
             return (string)$url;
         }, $urls);

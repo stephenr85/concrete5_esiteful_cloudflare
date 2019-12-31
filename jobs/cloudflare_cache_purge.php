@@ -29,6 +29,12 @@ class CloudflareCachePurge extends Job
         return \Core::make(CloudflareHelper::class);
     }
 
+    public function reset()
+    {
+        parent::reset();
+        // $this->getCloudflareHelper()->getCachePurgeQueue()->deleteQueue();
+    }
+
     public function run()
     {
         $cloudflareHelper = $this->getCloudflareHelper();
@@ -45,7 +51,7 @@ class CloudflareCachePurge extends Job
         $totalTags = 0;
         $totalHosts = 0;
 
-        $messages = $q->receive(10);
+        $messages = $q->receive(5);
         foreach ($messages as $msg) {
             $msg->body = unserialize($msg->body);
 
@@ -68,9 +74,9 @@ class CloudflareCachePurge extends Job
             return (string)$thing;
         };
 
-        $files = array_map($to_str_callback, $files);
-        $tags = array_map($to_str_callback, $tags);
-        $hosts = array_map($to_str_callback, $hosts);
+        $files = array_unique(array_filter(array_map($to_str_callback, $files)));
+        $tags = array_unique(array_filter(array_map($to_str_callback, $tags)));
+        $hosts = array_unique(array_filter(array_map($to_str_callback, $hosts)));
 
         $totalFiles += count($files);
         $totalTags += count($tags);
@@ -79,8 +85,9 @@ class CloudflareCachePurge extends Job
         //$q->deleteQueue();
 
         if($totalFiles + $totalTags + $totalHosts > 0) {
-            $cloudflareHelper->getApiEndpoint('zones')->cachePurge($cloudflareHelper->getCurrentZoneID(), $files, $tags, $hosts);
+            $cloudflareHelper->getApiEndpoint('zones')->cachePurge($cloudflareHelper->getCurrentZoneID(), empty($files) ? null : $files, empty($tags) ? null : $tags, empty($hosts) ? null : $hosts);
         }
+
         return t("Purged %s URLs, %s tags, %s hosts. Queue remaining: %s", $totalFiles, $totalTags, $totalHosts, $remaining);
     }
 
