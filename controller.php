@@ -2,14 +2,14 @@
 
 namespace Concrete\Package\EsitefulCloudflare;
 
-use \Loader;
 use Route;
-use \Events;
-
+use Events;
+use Core;
 use Package;
 use Concrete\Core\Page\Page;
 use Concrete\Package\EsitefulCloudflare\Helpers\CloudflareHelper;
 use Concrete\Core\Job\Job;
+use Concrete\Core\Http\Request;
 
 /**
  * This is the main controller for the package which controls the functionality like Install/Uninstall etc.
@@ -23,7 +23,7 @@ class Controller extends Package {
 	*/
 	protected $pkgHandle = 'esiteful_cloudflare';
 	protected $appVersionRequired = '8.0.1';
-	protected $pkgVersion = '0.0.2';
+	protected $pkgVersion = '0.0.3';
 
 	/**
 	 * This function returns the functionality description ofthe package.
@@ -50,16 +50,88 @@ class Controller extends Package {
 	}
 
 
-	public function on_start(){
+	public function on_start()
+    {
 
-		$this->setupAutoloader();
+		$this->init_autoloader();
+        $this->init_event_listeners();
+        $this->init_routes();
+        $this->init_toolbar_items();
 
-        //$this->getConfig()->save('api.email', 'les.lee@esiteful.com');
-        //$this->getConfig()->save('api.key', '6b434a3f27f8b620427e164b615d636fc0160');
+	}
 
-        $cloudflareHelper = \Core::make(CloudflareHelper::class);
+	/**
+     * This function initializes the class autolaoder
+     *
+     * @param void
+     * @return void
+     * @author Stephen Rushing, eSiteful
+     */
+    protected function init_autoloader()
+    {
+        if (file_exists($this->getPackagePath() . '/vendor')) {
+            require_once $this->getPackagePath() . '/vendor/autoload.php';
+        }
+    }
 
-        if($cloudflareHelper->isEnabled()) {
+    /**
+     * This function initializes the class routes
+     *
+     * @param void
+     * @return void
+     * @author Stephen Rushing, eSiteful
+     */
+    protected function init_routes()
+    {
+        Route::register('/tools/package/esiteful_cloudflare/clear_cache/page', '\Concrete\Package\EsitefulCloudflare\Controller\Tool\ClearCache::page');
+    }
+
+    /**
+     * This function initializes the toolbar items
+     *
+     * @param void
+     * @return void
+     * @author Stephen Rushing, eSiteful
+     */
+    protected function init_toolbar_items()
+    {
+        $request = Request::getInstance();
+        /* @var $menuHelper \Concrete\Core\Application\Service\UserInterface\Menu */
+        $menuHelper = Core::make('helper/concrete/ui/menu');
+        $pkgHandle = $this->pkgHandle;
+
+        if (!$request->isXmlHttpRequest()) {
+            Events::addListener('on_before_render', function($event) use ($menuHelper, $pkgHandle) {
+
+                $menuHelper->addPageHeaderMenuItem('clear_cache', $pkgHandle, [
+                    'icon' => 'refresh',
+                    'label' => t('Clear Cache'),
+                    'position' => 'left',
+                    'href' => \URL::to('/tools/package/esiteful_cloudflare/clear_cache/page'),
+                    'linkAttributes' => [
+                        'id' => 'cloudflare-clear-cache-button'
+                    ]
+                ]);
+
+            });
+        }
+    }
+
+    /**
+     * This function initializes the event listeners
+     *
+     * @param void
+     * @return void
+     * @author Stephen Rushing, eSiteful
+     */
+    protected function init_event_listeners()
+    {
+        $cloudflareHelper = Core::make(CloudflareHelper::class);
+        $config = $cloudflareHelper->getConfig();
+
+        if($cloudflareHelper->isEnabled() && $config->get('esiteful_cloudflare.autopurge.enabled') !== false) {
+
+            // Register page events
             $pageEventListener = function($event) use ($cloudflareHelper) {
                 if(method_exists($event, 'getPageObject')) {
                     $page = $event->getPageObject();
@@ -71,11 +143,11 @@ class Controller extends Package {
                 }
             };
 
-            Events::addListener('on_page_update', $pageEventListener);
-            Events::addListener('on_page_move', $pageEventListener);
-            Events::addListener('on_page_delete', $pageEventListener);
-            Events::addListener('on_page_version_approve', $pageEventListener);
+            foreach($config->get('esiteful_cloudflare.autopurge.page_events') as $eventName) {
+                Events::addListener($eventName, $pageEventListener);
+            }
 
+            // Register file events
             $fileEventListener = function($event) use ($cloudflareHelper) {
                 $file = null;
                 if(method_exists($event, 'getFileObject')) {
@@ -91,22 +163,10 @@ class Controller extends Package {
                 }
             };
 
-            Events::addListener('on_file_version_add', $fileEventListener);
-            Events::addListener('on_file_version_approve', $fileEventListener);
-            Events::addListener('on_file_version_deny', $fileEventListener);
-            Events::addListener('on_file_version_update_contents', $fileEventListener);
-            Events::addListener('on_file_delete', $fileEventListener);
+            foreach($config->get('esiteful_cloudflare.autopurge.file_events') as $eventName) {
+                Events::addListener($eventName, $fileEventListener);
+            }
 
-        }
-	}
-
-	/**
-     * Configure the autoloader
-     */
-    private function setupAutoloader()
-    {
-        if (file_exists($this->getPackagePath() . '/vendor')) {
-            require_once $this->getPackagePath() . '/vendor/autoload.php';
         }
     }
 
@@ -119,7 +179,7 @@ class Controller extends Package {
 	 */
 	public function install()
 	{
-		$this->setupAutoloader();
+		$this->setup_autoloader();
 
 	    $pkg = parent::install();
 
