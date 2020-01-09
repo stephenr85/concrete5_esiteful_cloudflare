@@ -4,6 +4,7 @@ use Concrete\Core\Controller\Controller;
 use Concrete\Core\Job\Job;
 use Concrete\Package\EsitefulCloudflare\Helpers\CloudflareHelper;
 use Concrete\Core\Page\Page;
+use Concrete\Core\Area\Area;
 use URL;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Concrete\Core\Cache\Page\PageCache;
@@ -25,7 +26,22 @@ class ClearCache extends Controller
 
                 $cache = PageCache::getLibrary();
                 $cache->purge($page);
-                //$page->refreshCache();
+                $page->refreshCache();
+
+                $areas = Area::getListOnPage($page);
+                $totalAreas = count($areas);
+                $data['areas_cache_cleared'] = $totalAreas;
+                foreach($areas as $area) {
+                    $area->refreshCache($page);
+                }
+
+                $blocks = $page->getBlocks();
+                $totalBlocks = count($blocks);
+                $data['blocks_cache_cleared'] = $totalBlocks;
+                foreach($blocks as $block) {
+                    $block->refreshBlockOutputCache();
+                    $block->refreshBlockRecordCache();
+                }
             }
         }
 
