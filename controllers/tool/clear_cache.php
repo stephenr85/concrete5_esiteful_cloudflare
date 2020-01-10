@@ -22,7 +22,11 @@ class ClearCache extends Controller
         if($this->request->get('cID')) {
             $page = Page::getByID($this->request->get('cID'));
             if(is_object($page) && !$page->isError()) {
-                $urls[] = URL::to($page);
+                $urls[] = (string)URL::to($page);
+
+                foreach ($page->getPagePaths() as $path) {
+                    $urls[] = (string)URL::to($path->getPagePath());
+                }
 
                 $cache = PageCache::getLibrary();
                 $cache->purge($page);
@@ -45,6 +49,10 @@ class ClearCache extends Controller
             }
         }
 
+        $urls = array_unique(array_filter($urls));
+        $data['urls'] = $urls;
+
+        return new JsonResponse($data);
         $cloudflareHelper->queueCachePurgeURL($urls);
 
         $purgeQueue = $cloudflareHelper->getCachePurgeQueue();

@@ -83,7 +83,8 @@ class Controller extends Package {
      */
     protected function init_routes()
     {
-        Route::register('/tools/package/esiteful_cloudflare/clear_cache/page', '\Concrete\Package\EsitefulCloudflare\Controller\Tool\ClearCache::page');
+        Route::get('/tools/package/esiteful_cloudflare/clear_cache/page', '\Concrete\Package\EsitefulCloudflare\Controller\Tool\ClearCache::page');
+        Route::post('/tools/package/esiteful_cloudflare/clear_cache/page', '\Concrete\Package\EsitefulCloudflare\Controller\Tool\ClearCache::page');
     }
 
     /**

@@ -26,7 +26,7 @@ $(function(){
             cache: false
         });
 
-        request.then(function(){
+        request.then(function(response){
             window.location.reload();
         });
 
