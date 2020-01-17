@@ -52,7 +52,6 @@ class ClearCache extends Controller
         $urls = array_unique(array_filter($urls));
         $data['urls'] = $urls;
 
-        return new JsonResponse($data);
         $cloudflareHelper->queueCachePurgeURL($urls);
 
         $purgeQueue = $cloudflareHelper->getCachePurgeQueue();
