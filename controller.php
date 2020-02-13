@@ -7,6 +7,7 @@ use Events;
 use Core;
 use Package;
 use Concrete\Core\Page\Page;
+use Concrete\Package\EsitefulCloudflare\Helpers\PackageHelper;
 use Concrete\Package\EsitefulCloudflare\Helpers\CloudflareHelper;
 use Concrete\Core\Job\Job;
 use Concrete\Core\Http\Request;
@@ -23,7 +24,7 @@ class Controller extends Package {
 	*/
 	protected $pkgHandle = 'esiteful_cloudflare';
 	protected $appVersionRequired = '8.0.1';
-	protected $pkgVersion = '0.0.3';
+	protected $pkgVersion = '0.0.5';
 
 	/**
 	 * This function returns the functionality description ofthe package.
@@ -49,6 +50,15 @@ class Controller extends Package {
 	    return t("eSiteful Cloudflare");
 	}
 
+    public function getPackageHelper()
+    {
+        if(!is_object($this->pkgHelper)) {
+            $pkg = Package::getByHandle($this->getPackageHandle());
+            $this->pkgHelper = new PackageHelper($pkg);
+            $this->pkgHelper->setApplication($this->app);
+        }
+        return $this->pkgHelper;
+    }
 
 	public function on_start()
     {
@@ -185,7 +195,8 @@ class Controller extends Package {
 	    $pkg = parent::install();
 
 	    // Install Package Items
-	    $this->install_jobs($pkg);
+	    $this->install_page_attributes($pkg);
+        $this->install_jobs($pkg);
 	}
 
 	/**
@@ -200,6 +211,7 @@ class Controller extends Package {
 		parent::upgrade();
 		$pkg = Package::getByHandle($this->getPackageHandle());
 	    // Install Package Items
+        $this->install_page_attributes($pkg);
 	    $this->install_jobs($pkg);
 	}
 
@@ -214,6 +226,25 @@ class Controller extends Package {
 	{
 	    $pkg = parent::uninstall();
 	}
+
+    /**
+     * This function is used to install page attributes.
+     *
+     * @param type $pkg
+     * @return void
+     * @author Stephen Rushing, eSiteful
+     */
+    function install_page_attributes($pkg){
+
+        $pkgHelper = $this->getPackageHelper();
+
+        $key = $pkgHelper->upsertAttributeKey('collection', 'Cloudflare', 'textarea', [
+            'akHandle' => 'cloudflare_cache_purge_urls',
+            'akName' => t('Cloudflare Cache Purge Additional URLs'),
+            'akIsSearchable' => 1,
+            'akIsSearchableIndexed' => 1,
+        ]);
+    }
 
 
 	/**

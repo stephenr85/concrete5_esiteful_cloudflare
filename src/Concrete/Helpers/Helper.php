@@ -2,6 +2,7 @@
 
 use Concrete\Core\Application\Application;
 use Concrete\Core\Package\Package;
+use Concrete\Core\Database\Connection\Connection;
 
 abstract class Helper {
 
@@ -17,9 +18,29 @@ abstract class Helper {
         return $this->app;
     }
 
+    public function getEntityManager()
+    {
+        return is_object($this->entityManager) ? $this->entityManager : $this->entityManager = $this->getDatabaseConnection()->getEntityManager();
+    }
+
+    public function getDatabaseConnection()
+    {
+        return is_object($this->db) ? $this->db : $this->db = $this->getApplication()->make(Connection::class);
+    }
+
+    public function getSite()
+    {
+        return $this->getApplication()->make('site')->getSite();
+    }
+
     public function getConfig()
     {
-        return $this->app->config;
+        return $this->getApplication()->make('config');
+    }
+
+    public function getSiteConfig()
+    {
+        return $this->getSite()->getConfigRepository();
     }
 
     public function getPackage()

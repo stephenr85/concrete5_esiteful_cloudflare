@@ -1,6 +1,11 @@
 <?php namespace Concrete\Package\EsitefulCloudflare\Helpers;
 
+use URL;
+use Database;
 use Concrete\Core\Foundation\Queue\QueueService;
+use Concrete\Core\Page\Page;
+use Concrete\Core\Area\Area;
+use Concrete\Core\Cache\Page\PageCache;
 
 class CloudflareHelper extends Helper {
 
@@ -61,6 +66,55 @@ class CloudflareHelper extends Helper {
     {
         $q = $this->app->make(QueueService::class)->get('esiteful_cloudflare_cache_purge');
         return $q;
+    }
+
+    public function purgePageCache($cID)
+    {
+        $page = is_object($cID) ? $cID : Page::getByID($cID);
+        $urls = [];
+        if(is_object($page) && !$page->isError()) {
+            $urls[] = (string)URL::to($page);
+
+            foreach ($page->getPagePaths() as $path) {
+                $urls[] = (string)URL::to($path->getPagePath());
+            }
+
+            $cache = PageCache::getLibrary();
+            $cache->purge($page);
+            $page->refreshCache();
+
+            $areas = Area::getListOnPage($page);
+            $totalAreas = count($areas);
+            $data['areas_cache_cleared'] = $totalAreas;
+            foreach($areas as $area) {
+                $area->refreshCache($page);
+            }
+
+            $blocks = $page->getBlocks();
+            $totalBlocks = count($blocks);
+            $data['blocks_cache_cleared'] = $totalBlocks;
+            foreach($blocks as $block) {
+                $block->refreshBlockOutputCache();
+                $block->refreshBlockRecordCache();
+            }
+
+            // Get Aliase URLs
+            $db = Database::get();
+            $aliasPaths = $db->fetchAll('select cPath from PagePaths where cID in (select cID from Pages where cPointerID = ?)', [$page->getCollectionID()]);
+            foreach($aliasPaths as $aliasPath) {
+                $urls[] = $aliasPath['cPath'];
+            }
+
+            // Get additional URLs from attribute
+            $otherURLs = $page->getAttribute('cloudflare_cache_purge_urls');
+            if($otherURLs) {
+                $otherURLs = array_filter(preg_split('/\n/', $otherURLs));
+                $urls = array_merge($urls, $otherURLs);
+            }
+
+        }
+
+        $this->queueCachePurgeURL($urls);
     }
 
     public function queueCachePurgeURL($urls)

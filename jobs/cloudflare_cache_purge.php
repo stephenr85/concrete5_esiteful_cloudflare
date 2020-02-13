@@ -7,6 +7,7 @@ use Concrete\Core\Page\Page;
 use Package;
 use PageTemplate;
 use Concrete\Core\Page\Type\Type as PageType;
+use Concrete\Core\Cache\Page\PageCache;
 use PageTheme;
 use PageController;
 use Concrete\Core\Area\Area;
@@ -130,6 +131,7 @@ class CloudflareCachePurge extends QueueableJob
         //$q->deleteQueue();
         //var_dump($files);die;
         if($totalFiles + $totalTags + $totalHosts > 0) {
+            //\Log::addInfo(var_export(['files' => $files, 'tags' => $tags, 'hosts' => $hosts], true));
             $cloudflareHelper->getApiEndpoint('zones')->cachePurge($cloudflareHelper->getCurrentZoneID(), empty($files) ? null : $files, empty($tags) ? null : $tags, empty($hosts) ? null : $hosts);
         }
 

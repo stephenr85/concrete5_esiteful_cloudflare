@@ -20,37 +20,11 @@ class ClearCache extends Controller
         if(!is_array($urls)) $urls = [];
 
         if($this->request->get('cID')) {
-            $page = Page::getByID($this->request->get('cID'));
-            if(is_object($page) && !$page->isError()) {
-                $urls[] = (string)URL::to($page);
-
-                foreach ($page->getPagePaths() as $path) {
-                    $urls[] = (string)URL::to($path->getPagePath());
-                }
-
-                $cache = PageCache::getLibrary();
-                $cache->purge($page);
-                $page->refreshCache();
-
-                $areas = Area::getListOnPage($page);
-                $totalAreas = count($areas);
-                $data['areas_cache_cleared'] = $totalAreas;
-                foreach($areas as $area) {
-                    $area->refreshCache($page);
-                }
-
-                $blocks = $page->getBlocks();
-                $totalBlocks = count($blocks);
-                $data['blocks_cache_cleared'] = $totalBlocks;
-                foreach($blocks as $block) {
-                    $block->refreshBlockOutputCache();
-                    $block->refreshBlockRecordCache();
-                }
-            }
+            $cloudflareHelper->purgePageCache($this->request->get('cID'));
         }
 
         $urls = array_unique(array_filter($urls));
-        $data['urls'] = $urls;
+        //$data['urls'] = $urls;
 
         $cloudflareHelper->queueCachePurgeURL($urls);
 
