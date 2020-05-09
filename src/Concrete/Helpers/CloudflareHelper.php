@@ -95,7 +95,7 @@ class CloudflareHelper extends Helper {
             $data['blocks_cache_cleared'] = $totalBlocks;
             foreach($blocks as $block) {
                 $block->refreshBlockOutputCache();
-                $block->refreshBlockRecordCache();
+                //$block->refreshBlockRecordCache();
             }
 
             // Get Aliase URLs
