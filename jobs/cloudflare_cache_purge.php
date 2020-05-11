@@ -14,6 +14,8 @@ use Concrete\Core\Area\Area;
 use Concrete\Package\EsitefulCloudflare\Helpers\CloudflareHelper;
 use ZendQueue\Message as ZendQueueMessage;
 use ZendQueue\Queue as ZendQueue;
+use Log;
+use Exception;
 
 class CloudflareCachePurge extends QueueableJob
 {
@@ -31,7 +33,53 @@ class CloudflareCachePurge extends QueueableJob
 
     public function getCloudflareHelper()
     {
-        return \Core::make(CloudflareHelper::class);
+        return Core::make(CloudflareHelper::class);
+    }
+
+    public function getLogger()
+    {
+        if(!$this->logger)
+        {
+            $this->logger = Log::withName($this->getLogNamespace());
+        }
+        return $this->logger;
+    }
+
+    public function getLogNamespace()
+    {
+        $ns = $this->getJobHandle();
+        return $ns;
+    }
+
+    public function logInfo($message)
+    {
+        return $this->getLogger()->addInfo($message);
+    }
+
+    public function logNotice($message)
+    {
+        return $this->getLogger()->addNotice($message);
+    }
+
+    public function logWarning($message)
+    {
+        return $this->getLogger()->addwarning($message);
+    }
+
+    public function logError($message)
+    {
+        return $this->getLogger()->addError($message);
+    }
+
+    public function log($message)
+    {
+        if($message instanceof Exception){
+            return $this->logError($message);
+        } else if(is_object($message) || is_array($message)){
+            return $this->logInfo(var_export($message, true));
+        } else {
+            return $this->logInfo($message);
+        }
     }
 
     public function reset()
@@ -131,8 +179,22 @@ class CloudflareCachePurge extends QueueableJob
         //$q->deleteQueue();
         //var_dump($files);die;
         if($totalFiles + $totalTags + $totalHosts > 0) {
-            //\Log::addInfo(var_export(['files' => $files, 'tags' => $tags, 'hosts' => $hosts], true));
-            $cloudflareHelper->getApiEndpoint('zones')->cachePurge($cloudflareHelper->getCurrentZoneID(), empty($files) ? null : $files, empty($tags) ? null : $tags, empty($hosts) ? null : $hosts);
+            $this->log(['files' => $files, 'tags' => $tags, 'hosts' => $hosts]);
+            try {
+                $zonesEndpoint = $cloudflareHelper->getApiEndpoint('zones');
+                $isSuccess = $zonesEndpoint->cachePurge($cloudflareHelper->getCurrentZoneID(), empty($files) ? null : array_values($files), empty($tags) ? null : array_values($tags), empty($hosts) ? null : array_values($hosts));
+            } catch(\GuzzleHttp\Exception\ClientException $ex)
+            {
+                $this->log($ex);
+                $this->log($ex->getRequest());
+                $this->log($ex->getRequest()->getBody()->__toString());
+                $this->log($ex->getResponse()->getBody()->getContents());
+                throw $ex;
+            }
+            catch(Exception $ex){
+               $this->log($ex);
+               throw $ex;
+            }
         }
 
         return t("Purged %s URLs, %s tags, %s hosts. Queue remaining: %s", $totalFiles, $totalTags, $totalHosts, $remaining);

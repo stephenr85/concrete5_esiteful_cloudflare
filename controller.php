@@ -24,7 +24,7 @@ class Controller extends Package {
 	*/
 	protected $pkgHandle = 'esiteful_cloudflare';
 	protected $appVersionRequired = '8.0.1';
-	protected $pkgVersion = '0.0.5';
+	protected $pkgVersion = '0.0.6';
 
 	/**
 	 * This function returns the functionality description ofthe package.
